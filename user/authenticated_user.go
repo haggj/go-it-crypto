@@ -9,7 +9,9 @@ import (
 	"encoding/json"
 	"encoding/pem"
 
+	. "github.com/aeznir/go-it-crypto/error"
 	. "github.com/aeznir/go-it-crypto/logs"
+	"github.com/google/uuid"
 	"github.com/square/go-jose"
 )
 
@@ -19,13 +21,48 @@ type AuthenticatedUser struct {
 	SigningKey    crypto.PublicKey
 }
 
-func (user AuthenticatedUser) Encrypt(data SingedAccessLog, receivers []RemoteUser) (string, error) {
+func (user AuthenticatedUser) Encrypt(log SingedAccessLog, receivers []RemoteUser) (string, error) {
+	sender := user
 
-	plaintext, err := json.Marshal(data)
+	uuid := uuid.New().String()
+
+	// Embed signed AccessLog into a SharedLog object and sign this object -> jwsSharedLog
+	sharedLog := SharedLog{Log: log, ShareId: uuid, Creator: sender.Id}
+
+	data, err := json.Marshal(sharedLog)
 	if err != nil {
-		return "", err
+		return "", ItCryptoError{Des: "Could not serialize sharedLog.", Err: err}
 	}
 
+	jwsSharedLog, err := sender.SignData(data)
+	if err != nil {
+		return "", ItCryptoError{Des: "Could not sign sharedLog.", Err: err}
+	}
+
+	// Sender creates and signs the header -> jwsSharedHeader
+	var receiverIds []string
+	for _, receiver := range receivers {
+		receiverIds = append(receiverIds, receiver.Id)
+	}
+
+	accessLog, err := FromSingedAccessLog(log)
+	if err != nil {
+		return "", ItCryptoError{Des: "Could not read provided accessLog.", Err: err}
+	}
+
+	sharedHeader := SharedHeader{ShareId: uuid, Owner: accessLog.Owner, Receivers: receiverIds}
+
+	data, err = json.Marshal(sharedHeader)
+	if err != nil {
+		return "", ItCryptoError{Des: "Could not serialize sharedHeader.", Err: err}
+	}
+
+	jwsSharedHeader, err := sender.SignData(data)
+	if err != nil {
+		return "", ItCryptoError{Des: "Could not sign sharedHeader.", Err: err}
+	}
+
+	// Sender creates the encrypted JWE
 	var recipients []jose.Recipient
 	for _, receiver := range receivers {
 		recipients = append(recipients, jose.Recipient{
@@ -34,17 +71,23 @@ func (user AuthenticatedUser) Encrypt(data SingedAccessLog, receivers []RemoteUs
 		})
 	}
 
-	encrypter, err := jose.NewMultiEncrypter(jose.A256GCM, recipients, nil)
+	var options jose.EncrypterOptions
+	var sharedHeaderObject interface{}
+	json.Unmarshal([]byte(jwsSharedHeader), &sharedHeaderObject)
+	options.WithHeader("sharedHeader", sharedHeaderObject)
+
+	encrypter, err := jose.NewMultiEncrypter(jose.A256GCM, recipients, &options)
 	if err != nil {
-		return "", err
+		return "", ItCryptoError{Des: "Could not instantiate encryption engine.", Err: err}
 	}
 
-	object, err := encrypter.Encrypt(plaintext)
+	jwe, err := encrypter.Encrypt([]byte(jwsSharedLog))
 	if err != nil {
-		return "", err
+		return "", ItCryptoError{Des: "Could not encrypt.", Err: err}
 	}
 
-	return object.FullSerialize(), nil
+	return jwe.FullSerialize(), nil
+
 }
 
 func (user AuthenticatedUser) SignData(data []byte) (string, error) {
@@ -62,7 +105,7 @@ func (user AuthenticatedUser) SignData(data []byte) (string, error) {
 }
 
 func (user AuthenticatedUser) SignAccessLog(log AccessLog) (SingedAccessLog, error) {
-	rawLog, err := json.Marshal(user)
+	rawLog, err := json.Marshal(log)
 	if err != nil {
 		return SingedAccessLog{}, err
 	}
@@ -80,7 +123,7 @@ func (user AuthenticatedUser) SignAccessLog(log AccessLog) (SingedAccessLog, err
 	return singedLog, nil
 }
 
-func ImportAuthenticatedUser(encryptionCertificate string, VerificationCertificate string, decryptionKey string, signingKey string) (AuthenticatedUser, error) {
+func ImportAuthenticatedUser(id string, encryptionCertificate string, VerificationCertificate string, decryptionKey string, signingKey string) (AuthenticatedUser, error) {
 
 	// Parse PEM-encoded encryption certificate
 	rawEncCert, _ := pem.Decode([]byte(encryptionCertificate))
@@ -112,6 +155,7 @@ func ImportAuthenticatedUser(encryptionCertificate string, VerificationCertifica
 
 	return AuthenticatedUser{
 		RemoteUser: RemoteUser{
+			Id:                      id,
 			EncryptionCertificate:   *encCert.PublicKey.(*ecdsa.PublicKey),
 			VerificationCertificate: *vrfCert.PublicKey.(*ecdsa.PublicKey),
 		},
@@ -136,6 +180,7 @@ func GenerateAuthenticatedUser() (AuthenticatedUser, error) {
 
 	return AuthenticatedUser{
 		RemoteUser: RemoteUser{
+			Id:                      uuid.New().String(),
 			EncryptionCertificate:   encryptionCertificate,
 			VerificationCertificate: verificationCertificate,
 		},

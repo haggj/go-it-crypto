@@ -1,13 +1,18 @@
 package logs
 
+import (
+	b64 "encoding/base64"
+	"encoding/json"
+)
+
 type AccessLog struct {
-	Monitor       string
-	Owner         string
-	Tool          string
-	Justification string
-	Timestamp     int
-	AccessKind    string
-	DataType      []string
+	Monitor       string   `json:"monitor"`
+	Owner         string   `json:"owner"`
+	Tool          string   `json:"tool"`
+	Justification string   `json:"justification"`
+	Timestamp     int      `json:"timestamp"`
+	AccessKind    string   `json:"accessKind"`
+	DataType      []string `json:"dataType"`
 }
 
 func GenerateAccessLog() AccessLog {
@@ -22,9 +27,24 @@ func GenerateAccessLog() AccessLog {
 	}
 }
 
+func FromSingedAccessLog(signedLog SingedAccessLog) (AccessLog, error) {
+	jsonData, err := b64.RawURLEncoding.DecodeString(signedLog.Payload)
+	if err != nil {
+		return AccessLog{}, err
+	}
+
+	var accessLog = AccessLog{}
+	err = json.Unmarshal(jsonData, &accessLog)
+	if err != nil {
+		return AccessLog{}, err
+	}
+
+	return accessLog, nil
+}
+
 type SingedAccessLog struct {
-	Payload   string
-	Signature string
-	Header    string
-	Protected string
+	Payload   string `json:"payload"`
+	Signature string `json:"signature"`
+	Header    string `json:"header,omitempty"`
+	Protected string `json:"protected"`
 }

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"fmt"
 
+	. "github.com/aeznir/go-it-crypto/error"
 	"github.com/aeznir/go-it-crypto/logs"
 	"github.com/aeznir/go-it-crypto/user"
 	"gopkg.in/square/go-jose.v2"
@@ -86,33 +87,26 @@ func main() {
 	}
 
 	accessLog := logs.GenerateAccessLog()
+	accessLog.Monitor = "sender"
+	accessLog.Owner = "receiver"
 
-	remote1, err := user.GenerateRemoteUser()
-	if err != nil {
-		panic(err)
-	}
-
-	remote2, err := user.ImportRemoteUser(pubA, pubA)
+	remote, err := user.ImportRemoteUser("receiver", pubA, pubA)
 	if err != nil {
 		panic(err)
 	}
 
 	auth, err := user.ImportAuthenticatedUser(
-		pubA, pubA, privA, privA,
+		"sender", pubA, pubA, privA, privA,
 	)
-	auth, err = user.GenerateAuthenticatedUser()
-	if err != nil {
-		panic(err)
-	}
 
 	res, err := auth.SignAccessLog(accessLog)
 	if err != nil {
 		panic(err)
 	}
 
-	cipher, err := auth.Encrypt(res, []user.RemoteUser{remote1, remote2})
+	cipher, err := auth.Encrypt(res, []user.RemoteUser{remote, remote})
 	if err != nil {
-		panic(err)
+		panic(ItCryptoError{Des: "Could not encrypt", Err: err})
 	}
 	fmt.Println(cipher)
 

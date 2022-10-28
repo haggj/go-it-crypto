@@ -6,6 +6,8 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
+
+	"github.com/google/uuid"
 )
 
 type RemoteUser struct {
@@ -14,7 +16,7 @@ type RemoteUser struct {
 	VerificationCertificate ecdsa.PublicKey
 }
 
-func ImportRemoteUser(encryptionCertificate string, VerificationCertificate string) (RemoteUser, error) {
+func ImportRemoteUser(id string, encryptionCertificate string, VerificationCertificate string) (RemoteUser, error) {
 
 	rawEncCert, _ := pem.Decode([]byte(encryptionCertificate))
 	encCert, err := x509.ParseCertificate([]byte(rawEncCert.Bytes))
@@ -29,6 +31,7 @@ func ImportRemoteUser(encryptionCertificate string, VerificationCertificate stri
 	}
 
 	return RemoteUser{
+		Id:                      id,
 		EncryptionCertificate:   *encCert.PublicKey.(*ecdsa.PublicKey),
 		VerificationCertificate: *vrfCert.PublicKey.(*ecdsa.PublicKey),
 	}, nil
@@ -48,6 +51,7 @@ func GenerateRemoteUser() (RemoteUser, error) {
 	verificationCertificate := privateKey.PublicKey
 
 	return RemoteUser{
+		Id:                      uuid.New().String(),
 		EncryptionCertificate:   encryptionCertificate,
 		VerificationCertificate: verificationCertificate,
 	}, nil
