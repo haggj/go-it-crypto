@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 
 	. "github.com/aeznir/go-it-crypto/error"
@@ -11,6 +12,16 @@ import (
 	"github.com/aeznir/go-it-crypto/user"
 	"gopkg.in/square/go-jose.v2"
 )
+
+var rootCA = `-----BEGIN CERTIFICATE-----
+MIIBITCByAIJAJTQXJMDfhh5MAoGCCqGSM49BAMCMBkxFzAVBgNVBAMMDkRldmVs
+b3BtZW50IENBMB4XDTIyMTAxMDE1MzUzM1oXDTIzMTAxMDE1MzUzM1owGTEXMBUG
+A1UEAwwORGV2ZWxvcG1lbnQgQ0EwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAR0
+aTZBEZFtalbSmc8tNjh2UED6s09U4ZNM3fEA7AAOawH6RgQ1LjDtTFSAi0pO9YH4
+SVinZn6m4OwhGaoNZt0sMAoGCCqGSM49BAMCA0gAMEUCIQDtK9bAkAQHrAKmGPfV
+vg87jEqogKq85/q5V6jHZjawhwIgRUKldOc4fTa5/diT1OHKXLUW8uaDjZVNgv8Z
+HRVyXPs=
+-----END CERTIFICATE-----`
 
 var pubA = `-----BEGIN CERTIFICATE-----
 MIIBIDCByQIJAOuo8ugAq2wUMAkGByqGSM49BAEwGTEXMBUGA1UEAwwORGV2ZWxv
@@ -90,6 +101,11 @@ func main() {
 	accessLog.Monitor = "sender"
 	accessLog.Owner = "receiver"
 
+	_, err = user.ImportRemoteUser("abc", pubA, pubA, rootCA)
+	if err != nil {
+		panic(err)
+	}
+
 	remote, err := user.ImportAuthenticatedUser("receiver", pubA, pubA, privA, privA)
 	if err != nil {
 		panic(err)
@@ -108,7 +124,10 @@ func main() {
 	if err != nil {
 		panic(ItCryptoError{Des: "Could not encrypt", Err: err})
 	}
-	fmt.Println(cipher)
+	var o interface{}
+	json.Unmarshal([]byte(cipher), &o)
+	// c, _ := json.MarshalIndent(o, "", "    ")
+	fmt.Printf("%s", string(cipher))
 
 	plain, err := auth.Decrypt(cipher, fetchUser)
 	if err != nil {
@@ -120,6 +139,6 @@ func main() {
 }
 
 func fetchUser(x string) user.RemoteUser {
-	user, _ := user.ImportRemoteUser("sender", pubA, pubA)
+	user, _ := user.ImportRemoteUser("sender", pubA, pubA, rootCA)
 	return user
 }

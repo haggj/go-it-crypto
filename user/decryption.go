@@ -3,6 +3,7 @@ package user
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 
 	. "github.com/aeznir/go-it-crypto/error"
 	. "github.com/aeznir/go-it-crypto/logs"
@@ -25,6 +26,7 @@ func Decrypt(jwe string, receiver AuthenticatedUser, fetchUser fetchUser) (Singe
 	}
 
 	// Parse the jwsSharedHeader which is stored within the JWE protected header
+	fmt.Println(header)
 	if _, ok := header.ExtraHeaders["sharedHeader"]; !ok {
 		return SingedAccessLog{}, ItCryptoError{Des: "Could not extract jwsSharedHeader", Err: nil}
 	}

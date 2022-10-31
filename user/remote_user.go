@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 
+	. "github.com/aeznir/go-it-crypto/error"
 	"github.com/google/uuid"
 )
 
@@ -16,16 +17,33 @@ type RemoteUser struct {
 	VerificationCertificate ecdsa.PublicKey
 }
 
-func ImportRemoteUser(id string, encryptionCertificate string, VerificationCertificate string) (RemoteUser, error) {
+func ImportRemoteUser(id string, encryptionCertificate string, VerificationCertificate string, trustedCertificate string) (RemoteUser, error) {
 
+	rawTrustedCert, _ := pem.Decode([]byte(trustedCertificate))
+	trustedCert, err := x509.ParseCertificate([]byte(rawTrustedCert.Bytes))
+
+	// Parse encryption certificate
 	rawEncCert, _ := pem.Decode([]byte(encryptionCertificate))
 	encCert, err := x509.ParseCertificate([]byte(rawEncCert.Bytes))
+	if err != nil {
+		return RemoteUser{}, ItCryptoError{Des: "Can not parse encryption certificate", Err: err}
+	}
+
+	// Verify encryption certificate
+	err = encCert.CheckSignatureFrom(trustedCert)
+	if err != nil {
+		return RemoteUser{}, ItCryptoError{Des: "Can not verify encryption certificate", Err: err}
+	}
+
+	// Parse verification certificate
+	rawVrfCert, _ := pem.Decode([]byte(VerificationCertificate))
+	vrfCert, err := x509.ParseCertificate([]byte(rawVrfCert.Bytes))
 	if err != nil {
 		return RemoteUser{}, nil
 	}
 
-	rawVrfCert, _ := pem.Decode([]byte(VerificationCertificate))
-	vrfCert, err := x509.ParseCertificate([]byte(rawVrfCert.Bytes))
+	// Verify verification certificate
+	err = encCert.CheckSignatureFrom(trustedCert)
 	if err != nil {
 		return RemoteUser{}, nil
 	}
