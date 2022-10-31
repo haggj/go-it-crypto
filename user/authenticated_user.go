@@ -12,7 +12,7 @@ import (
 	. "github.com/aeznir/go-it-crypto/error"
 	. "github.com/aeznir/go-it-crypto/logs"
 	"github.com/google/uuid"
-	"github.com/square/go-jose"
+	"gopkg.in/square/go-jose.v2"
 )
 
 type AuthenticatedUser struct {
