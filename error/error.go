@@ -8,5 +8,9 @@ type ItCryptoError struct {
 }
 
 func (e ItCryptoError) Error() string {
-	return fmt.Sprintf("%s\n\nReason:\n%s: syntax error", e.Des, e.Err.Error())
+	var origin = ""
+	if e.Err != nil {
+		origin = e.Err.Error()
+	}
+	return fmt.Sprintf("%s\n\nReason:\n%s: syntax error", e.Des, origin)
 }

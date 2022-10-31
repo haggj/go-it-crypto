@@ -90,7 +90,7 @@ func main() {
 	accessLog.Monitor = "sender"
 	accessLog.Owner = "receiver"
 
-	remote, err := user.ImportRemoteUser("receiver", pubA, pubA)
+	remote, err := user.ImportAuthenticatedUser("receiver", pubA, pubA, privA, privA)
 	if err != nil {
 		panic(err)
 	}
@@ -104,10 +104,22 @@ func main() {
 		panic(err)
 	}
 
-	cipher, err := auth.Encrypt(res, []user.RemoteUser{remote, remote})
+	cipher, err := auth.Encrypt(res, []user.RemoteUser{remote.RemoteUser})
 	if err != nil {
 		panic(ItCryptoError{Des: "Could not encrypt", Err: err})
 	}
 	fmt.Println(cipher)
 
+	plain, err := auth.Decrypt(cipher, fetchUser)
+	if err != nil {
+		panic(ItCryptoError{Des: "Could not decrypt", Err: err})
+	}
+
+	fmt.Println(plain.Extract())
+
+}
+
+func fetchUser(x string) user.RemoteUser {
+	user, _ := user.ImportRemoteUser("sender", pubA, pubA)
+	return user
 }

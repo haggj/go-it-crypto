@@ -27,6 +27,16 @@ func GenerateAccessLog() AccessLog {
 	}
 }
 
+func AccessLogFromJson(data []byte) (AccessLog, error) {
+	var accessLog = AccessLog{}
+	err := json.Unmarshal(data, &accessLog)
+	if err != nil {
+		return AccessLog{}, err
+	}
+
+	return accessLog, nil
+}
+
 func FromSingedAccessLog(signedLog SingedAccessLog) (AccessLog, error) {
 	jsonData, err := b64.RawURLEncoding.DecodeString(signedLog.Payload)
 	if err != nil {
@@ -40,11 +50,4 @@ func FromSingedAccessLog(signedLog SingedAccessLog) (AccessLog, error) {
 	}
 
 	return accessLog, nil
-}
-
-type SingedAccessLog struct {
-	Payload   string `json:"payload"`
-	Signature string `json:"signature"`
-	Header    string `json:"header,omitempty"`
-	Protected string `json:"protected"`
 }
