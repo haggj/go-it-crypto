@@ -1,7 +1,6 @@
 package user
 
 import (
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -9,22 +8,22 @@ import (
 	"encoding/json"
 	"encoding/pem"
 
-	. "github.com/aeznir/go-it-crypto/logs"
 	"github.com/google/uuid"
+	. "github.com/haggj/go-it-crypto/logs"
 	"gopkg.in/square/go-jose.v2"
 )
 
 type AuthenticatedUser struct {
 	RemoteUser
-	DecryptionKey crypto.PublicKey
-	SigningKey    crypto.PublicKey
+	DecryptionKey *ecdsa.PrivateKey
+	SigningKey    *ecdsa.PrivateKey
 }
 
 func (user AuthenticatedUser) Encrypt(log SingedAccessLog, receivers []RemoteUser) (string, error) {
 	return Encrypt(log, user, receivers)
 }
 
-func (user AuthenticatedUser) Decrypt(jwe string, fn fetchUser) (SingedAccessLog, error) {
+func (user AuthenticatedUser) Decrypt(jwe string, fn FetchUser) (SingedAccessLog, error) {
 	return Decrypt(jwe, user, fn)
 }
 
@@ -94,11 +93,11 @@ func ImportAuthenticatedUser(id string, encryptionCertificate string, Verificati
 	return AuthenticatedUser{
 		RemoteUser: RemoteUser{
 			Id:                      id,
-			EncryptionCertificate:   *encCert.PublicKey.(*ecdsa.PublicKey),
-			VerificationCertificate: *vrfCert.PublicKey.(*ecdsa.PublicKey),
+			EncryptionCertificate:   encCert.PublicKey.(*ecdsa.PublicKey),
+			VerificationCertificate: vrfCert.PublicKey.(*ecdsa.PublicKey),
 		},
-		DecryptionKey: decKey,
-		SigningKey:    signKey,
+		DecryptionKey: decKey.(*ecdsa.PrivateKey),
+		SigningKey:    signKey.(*ecdsa.PrivateKey),
 	}, nil
 
 }
@@ -119,8 +118,8 @@ func GenerateAuthenticatedUser() (AuthenticatedUser, error) {
 	return AuthenticatedUser{
 		RemoteUser: RemoteUser{
 			Id:                      uuid.New().String(),
-			EncryptionCertificate:   encryptionCertificate,
-			VerificationCertificate: verificationCertificate,
+			EncryptionCertificate:   &encryptionCertificate,
+			VerificationCertificate: &verificationCertificate,
 		},
 		DecryptionKey: decryptionKey,
 		SigningKey:    signingKey,

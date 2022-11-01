@@ -1,16 +1,11 @@
 package main
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"encoding/json"
 	"fmt"
 
-	. "github.com/aeznir/go-it-crypto/error"
-	"github.com/aeznir/go-it-crypto/logs"
-	"github.com/aeznir/go-it-crypto/user"
-	"gopkg.in/square/go-jose.v2"
+	. "github.com/haggj/go-it-crypto/logs"
+	"github.com/haggj/go-it-crypto/user"
+	. "github.com/haggj/go-it-crypto/user"
 )
 
 var rootCA = `-----BEGIN CERTIFICATE-----
@@ -39,106 +34,100 @@ MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgAfMysADImEAjdKcY
 oiFLpikvU6LFOTCI0DsJFT+28bCWB2RUk+FAuEqV0FGTftyjzMu/edqz
 -----END PRIVATE KEY-----`
 
+var pubB = `-----BEGIN CERTIFICATE-----
+MIIBITCByQIJAOuo8ugAq2wVMAkGByqGSM49BAEwGTEXMBUGA1UEAwwORGV2ZWxv
+cG1lbnQgQ0EwHhcNMjIxMDEwMTUzNTMzWhcNMjMxMDEwMTUzNTMzWjAbMRkwFwYD
+VQQDDBAibW1AZXhhbXBsZS5jb20iMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE
+ELWdCySVeYt89xdfnUfbAh79CXk/gFvU8U988UpSLEAGx30aJ0ZecVpdKhlXO1G4
+yiyL8Sl6dypeN8iH7g3EtTAJBgcqhkjOPQQBA0gAMEUCIQCFDtrX9Mog3KA904Yp
+XduiWCtxVbGYGkSviklavTsNnAIgI8h9WNqHZdPJDVyhPwwS5oggTkGZah0LYfc3
+8qphvbY=
+-----END CERTIFICATE-----`
+
+var privB = `-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg9XQgYCk62PfcaOKE
+OlAerYQAx0EWg4eVfqMc1amEu0ehRANCAAQQtZ0LJJV5i3z3F1+dR9sCHv0JeT+A
+W9TxT3zxSlIsQAbHfRonRl5xWl0qGVc7UbjKLIvxKXp3Kl43yIfuDcS1
+-----END PRIVATE KEY-----`
+
 func main() {
-	fmt.Println("Hello, Modules!")
 
-	// Generate a public/private key pair to use for this example.
-	privateKey1, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		panic(err)
-	}
+	// Setup Users
+	monitor, _ := user.GenerateAuthenticatedUser()
+	owner, _ := user.GenerateAuthenticatedUser()
+	receiver, _ := user.GenerateAuthenticatedUser()
+	fetchUser := getFetchUser([]RemoteUser{monitor.RemoteUser, owner.RemoteUser})
 
-	// Generate a public/private key pair to use for this example.
-	// privateKey2, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		panic(err)
-	}
+	// 1. Step: Monitor creates log and encrypts it for owner
+	accessLog := AccessLog{Monitor: monitor.Id, Owner: owner.Id, Tool: "tool", Justification: "jus", Timestamp: 30, AccessKind: "direct", DataType: []string{"Email", "Address"}}
+	signedLog, _ := monitor.SignAccessLog(accessLog)
+	jwe, _ := monitor.Encrypt(signedLog, []user.RemoteUser{owner.RemoteUser})
+	fmt.Println(jwe)
 
-	// Instantiate an encrypter using RSA-OAEP with AES128-GCM. An error would
-	// indicate that the selected algorithm(s) are not currently supported.
-	publicKey1 := &privateKey1.PublicKey
-	encrypter, err := jose.NewMultiEncrypter(jose.A256GCM, []jose.Recipient{
-		{Algorithm: jose.ECDH_ES_A256KW, Key: publicKey1}, {Algorithm: jose.ECDH_ES_A256KW, Key: publicKey1}}, nil)
-	if err != nil {
-		panic(err)
-	}
+	// 2. Step: Owner can decrypt log
+	logOut, _ := owner.Decrypt(jwe, fetchUser)
+	accessLog, _ = logOut.Extract()
+	fmt.Println(accessLog)
 
-	// Encrypt a sample plaintext. Calling the encrypter returns an encrypted
-	// JWE object, which can then be serialized for output afterwards. An error
-	// would indicate a problem in an underlying cryptographic primitive.
-	var plaintext = []byte("Lorem ipsum dolor sit amet")
-	object, err := encrypter.Encrypt(plaintext)
-	if err != nil {
-		panic(err)
-	}
+	// 3. Step: Owner shares with receivers
+	jwe, _ = owner.Encrypt(logOut, []RemoteUser{owner.RemoteUser, receiver.RemoteUser})
 
-	// Serialize the encrypted object using the full serialization format.
-	// Alternatively you can also use the compact format here by calling
-	// object.CompactSerialize() instead.
-	serialized := object.FullSerialize()
+	// 4. Step: Owner and receiver can decrypt
+	logOut, _ = owner.Decrypt(jwe, fetchUser)
+	logOut, _ = receiver.Decrypt(jwe, fetchUser)
+	plain, _ := logOut.Extract()
+	fmt.Println(plain)
 
-	// Parse the serialized, encrypted JWE object. An error would indicate that
-	// the given input did not represent a valid message.
-	object, err = jose.ParseEncrypted(serialized)
-	if err != nil {
-		panic(err)
-	}
+	// accessLog := GenerateAccessLog()
+	// accessLog.Monitor = "sender"
+	// accessLog.Owner = "receiver"
+	// accessLog.Justification = "go-it-crypto"
 
-	// Now we can decrypt and get back our original plaintext. An error here
-	// would indicate that the message failed to decrypt, e.g. because the auth
-	// tag was broken or the message was tampered with.
-	_, _, _, err = object.DecryptMulti(privateKey1)
-	if err != nil {
-		panic(err)
-	}
+	// receiver, err := user.ImportAuthenticatedUser("receiver", pubB, pubB, privB, privB)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	_, _, _, err = object.DecryptMulti(privateKey1)
-	if err != nil {
-		panic(err)
-	}
+	// sender, err := user.ImportAuthenticatedUser(
+	// 	"sender", pubA, pubA, privA, privA,
+	// )
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	accessLog := logs.GenerateAccessLog()
-	accessLog.Monitor = "sender"
-	accessLog.Owner = "receiver"
+	// // user, _ := user.GenerateAuthenticatedUser()
 
-	_, err = user.ImportRemoteUser("abc", pubA, pubA, rootCA)
-	if err != nil {
-		panic(err)
-	}
+	// fetchUser := getFetchUser([]RemoteUser{receiver.RemoteUser, sender.RemoteUser})
 
-	remote, err := user.ImportAuthenticatedUser("receiver", pubA, pubA, privA, privA)
-	if err != nil {
-		panic(err)
-	}
+	// fmt.Println(fetchUser("sender"))
 
-	auth, err := user.ImportAuthenticatedUser(
-		"sender", pubA, pubA, privA, privA,
-	)
+	// res, err := sender.SignAccessLog(accessLog)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	res, err := auth.SignAccessLog(accessLog)
-	if err != nil {
-		panic(err)
-	}
+	// cipher, err := receiver.Encrypt(res, []RemoteUser{receiver.RemoteUser, sender.RemoteUser})
+	// if err != nil {
+	// 	panic(ItCryptoError{Des: "Could not encrypt", Err: err})
+	// }
+	// fmt.Printf("%s\n", string(cipher))
 
-	cipher, err := auth.Encrypt(res, []user.RemoteUser{remote.RemoteUser})
-	if err != nil {
-		panic(ItCryptoError{Des: "Could not encrypt", Err: err})
-	}
-	var o interface{}
-	json.Unmarshal([]byte(cipher), &o)
-	// c, _ := json.MarshalIndent(o, "", "    ")
-	fmt.Printf("%s", string(cipher))
+	// plain, err := receiver.Decrypt(cipher, fetchUser)
+	// if err != nil {
+	// 	panic(ItCryptoError{Des: "Could not decrypt", Err: err})
+	// }
 
-	plain, err := auth.Decrypt(cipher, fetchUser)
-	if err != nil {
-		panic(ItCryptoError{Des: "Could not decrypt", Err: err})
-	}
-
-	fmt.Println(plain.Extract())
+	// fmt.Println(plain.Extract())
 
 }
 
-func fetchUser(x string) user.RemoteUser {
-	user, _ := user.ImportRemoteUser("sender", pubA, pubA, rootCA)
-	return user
+func getFetchUser(users []RemoteUser) FetchUser {
+	return func(x string) RemoteUser {
+		for _, user := range users {
+			if x == user.Id {
+				return user
+			}
+		}
+		panic("No matching user found")
+	}
 }

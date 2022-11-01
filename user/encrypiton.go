@@ -2,10 +2,10 @@ package user
 
 import (
 	"encoding/json"
-
-	. "github.com/aeznir/go-it-crypto/error"
-	. "github.com/aeznir/go-it-crypto/logs"
 	"github.com/google/uuid"
+
+	. "github.com/haggj/go-it-crypto/error"
+	. "github.com/haggj/go-it-crypto/logs"
 	"gopkg.in/square/go-jose.v2"
 )
 
@@ -54,7 +54,7 @@ func Encrypt(jwsSignedLog SingedAccessLog, sender AuthenticatedUser, receivers [
 	for _, receiver := range receivers {
 		recipients = append(recipients, jose.Recipient{
 			Algorithm: jose.ECDH_ES_A256KW,
-			Key:       &receiver.EncryptionCertificate,
+			Key:       receiver.EncryptionCertificate,
 		})
 	}
 

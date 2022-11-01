@@ -4,8 +4,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
-	. "github.com/aeznir/go-it-crypto/error"
 	"gopkg.in/square/go-jose.v2"
+
+	. "github.com/haggj/go-it-crypto/error"
 )
 
 type SingedAccessLog JWS

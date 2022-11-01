@@ -7,14 +7,14 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 
-	. "github.com/aeznir/go-it-crypto/error"
 	"github.com/google/uuid"
+	. "github.com/haggj/go-it-crypto/error"
 )
 
 type RemoteUser struct {
 	Id                      string
-	EncryptionCertificate   ecdsa.PublicKey
-	VerificationCertificate ecdsa.PublicKey
+	EncryptionCertificate   *ecdsa.PublicKey
+	VerificationCertificate *ecdsa.PublicKey
 }
 
 func ImportRemoteUser(id string, encryptionCertificate string, VerificationCertificate string, trustedCertificate string) (RemoteUser, error) {
@@ -50,8 +50,8 @@ func ImportRemoteUser(id string, encryptionCertificate string, VerificationCerti
 
 	return RemoteUser{
 		Id:                      id,
-		EncryptionCertificate:   *encCert.PublicKey.(*ecdsa.PublicKey),
-		VerificationCertificate: *vrfCert.PublicKey.(*ecdsa.PublicKey),
+		EncryptionCertificate:   encCert.PublicKey.(*ecdsa.PublicKey),
+		VerificationCertificate: vrfCert.PublicKey.(*ecdsa.PublicKey),
 	}, nil
 }
 
@@ -70,7 +70,7 @@ func GenerateRemoteUser() (RemoteUser, error) {
 
 	return RemoteUser{
 		Id:                      uuid.New().String(),
-		EncryptionCertificate:   encryptionCertificate,
-		VerificationCertificate: verificationCertificate,
+		EncryptionCertificate:   &encryptionCertificate,
+		VerificationCertificate: &verificationCertificate,
 	}, nil
 }

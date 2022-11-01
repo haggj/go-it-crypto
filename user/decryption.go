@@ -3,16 +3,15 @@ package user
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 
-	. "github.com/aeznir/go-it-crypto/error"
-	. "github.com/aeznir/go-it-crypto/logs"
+	. "github.com/haggj/go-it-crypto/error"
+	. "github.com/haggj/go-it-crypto/logs"
 	"gopkg.in/square/go-jose.v2"
 )
 
-type fetchUser func(string) RemoteUser
+type FetchUser func(string) RemoteUser
 
-func Decrypt(jwe string, receiver AuthenticatedUser, fetchUser fetchUser) (SingedAccessLog, error) {
+func Decrypt(jwe string, receiver AuthenticatedUser, fetchUser FetchUser) (SingedAccessLog, error) {
 
 	// Parse and decrypt the given JWE
 	object, err := jose.ParseEncrypted(jwe)
@@ -22,17 +21,16 @@ func Decrypt(jwe string, receiver AuthenticatedUser, fetchUser fetchUser) (Singe
 
 	_, header, plaintext, err := object.DecryptMulti(receiver.DecryptionKey)
 	if err != nil {
-		panic(err)
+		return SingedAccessLog{}, ItCryptoError{Des: "Failed to decrypt JWE", Err: err}
 	}
 
 	// Parse the jwsSharedHeader which is stored within the JWE protected header
-	fmt.Println(header)
 	if _, ok := header.ExtraHeaders["sharedHeader"]; !ok {
 		return SingedAccessLog{}, ItCryptoError{Des: "Could not extract jwsSharedHeader", Err: nil}
 	}
 	jwsSharedHeader, err := JwsFromMap(header.ExtraHeaders["sharedHeader"].(map[string]interface{}))
 	if err != nil {
-		return SingedAccessLog{}, ItCryptoError{Des: "Could not parse jwsSharedHeader", Err: nil}
+		return SingedAccessLog{}, ItCryptoError{Des: "Could not parse jwsSharedHeader", Err: err}
 	}
 
 	// Parse the jwsSharedLog which is stored within the JWE plaintext
@@ -40,7 +38,7 @@ func Decrypt(jwe string, receiver AuthenticatedUser, fetchUser fetchUser) (Singe
 	json.Unmarshal(plaintext, &obj)
 	jwsSharedLog, err := JwsFromBytes(plaintext)
 	if err != nil {
-		return SingedAccessLog{}, ItCryptoError{Des: "Could not parse jwsSharedLog", Err: nil}
+		return SingedAccessLog{}, ItCryptoError{Des: "Could not parse jwsSharedLog", Err: err}
 	}
 
 	// Extract the creator specified within the SharedLog.
@@ -110,7 +108,7 @@ func claimedCreator(jwsSharedLog JWS) (string, error) {
 	}
 	sharedLog, err := SharedLogFromJson(rawJson)
 	if err != nil {
-		return "", ItCryptoError{Des: "Could not deserialize payload in jwsSharedLog", Err: nil}
+		return "", ItCryptoError{Des: "Could not deserialize payload in jwsSharedLog", Err: err}
 	}
 	return sharedLog.Creator, nil
 }
@@ -122,7 +120,7 @@ func claimedMonitor(jwsAccessLog SingedAccessLog) (string, error) {
 	}
 	accessLog, err := AccessLogFromJson(rawJson)
 	if err != nil {
-		return "", ItCryptoError{Des: "Could not deserialize payload in jwsAccessLog", Err: nil}
+		return "", ItCryptoError{Des: "Could not deserialize payload in jwsAccessLog", Err: err}
 	}
 	return accessLog.Monitor, nil
 }
@@ -136,7 +134,7 @@ func verifySharedHeader(jwsSharedHeader JWS, sender RemoteUser) (SharedHeader, e
 	}
 
 	// Verify signature of passed jwsSharedHeader
-	payload, err := verify.Verify(&sender.VerificationCertificate)
+	payload, err := verify.Verify(sender.VerificationCertificate)
 	if err != nil {
 		return SharedHeader{}, ItCryptoError{Des: "Could not verify signature of jwsSharedLog", Err: err}
 	}
@@ -144,7 +142,7 @@ func verifySharedHeader(jwsSharedHeader JWS, sender RemoteUser) (SharedHeader, e
 	// Parse payload into SharedHeader object
 	sharedHeader, err := SharedHeaderFromJson(payload)
 	if err != nil {
-		return SharedHeader{}, ItCryptoError{Des: "Could not deserialize payload in jwsSharedHeader", Err: nil}
+		return SharedHeader{}, ItCryptoError{Des: "Could not deserialize payload in jwsSharedHeader", Err: err}
 	}
 	return sharedHeader, nil
 }
@@ -158,7 +156,7 @@ func verifySharedLog(jwsSharedLog JWS, sender RemoteUser) (SharedLog, error) {
 	}
 
 	// Verify signature of passed jwsSharedHeader
-	payload, err := verify.Verify(&sender.VerificationCertificate)
+	payload, err := verify.Verify(sender.VerificationCertificate)
 	if err != nil {
 		return SharedLog{}, ItCryptoError{Des: "Could not verify signature of jwsSharedLog", Err: err}
 	}
@@ -166,7 +164,7 @@ func verifySharedLog(jwsSharedLog JWS, sender RemoteUser) (SharedLog, error) {
 	// Parse payload into SharedHeader object
 	sharedLog, err := SharedLogFromJson(payload)
 	if err != nil {
-		return SharedLog{}, ItCryptoError{Des: "Could not deserialize payload in jwsSharedLog", Err: nil}
+		return SharedLog{}, ItCryptoError{Des: "Could not deserialize payload in jwsSharedLog", Err: err}
 	}
 	return sharedLog, nil
 }
@@ -180,7 +178,7 @@ func verifyAccessLog(jwsAccessLog JWS, sender RemoteUser) (AccessLog, error) {
 	}
 
 	// Verify signature of passed jwsAccessLog
-	payload, err := verify.Verify(&sender.VerificationCertificate)
+	payload, err := verify.Verify(sender.VerificationCertificate)
 	if err != nil {
 		return AccessLog{}, ItCryptoError{Des: "Could not verify signature of jwsAccessLog", Err: err}
 	}
@@ -188,7 +186,7 @@ func verifyAccessLog(jwsAccessLog JWS, sender RemoteUser) (AccessLog, error) {
 	// Parse payload into SharedHeader object
 	accessLog, err := AccessLogFromJson(payload)
 	if err != nil {
-		return AccessLog{}, ItCryptoError{Des: "Could not deserialize payload in jwsAccessLog", Err: nil}
+		return AccessLog{}, ItCryptoError{Des: "Could not deserialize payload in jwsAccessLog", Err: err}
 	}
 	return accessLog, nil
 }
