@@ -3,6 +3,8 @@ package user
 import (
 	"encoding/base64"
 	"encoding/json"
+	"golang.org/x/exp/slices"
+	"reflect"
 
 	. "github.com/haggj/go-it-crypto/error"
 	. "github.com/haggj/go-it-crypto/logs"
@@ -24,15 +26,6 @@ func Decrypt(jwe string, receiver AuthenticatedUser, fetchUser FetchUser) (Singe
 		return SingedAccessLog{}, ItCryptoError{Des: "Failed to decrypt JWE", Err: err}
 	}
 
-	// Parse the jwsSharedHeader which is stored within the JWE protected header
-	if _, ok := header.ExtraHeaders["sharedHeader"]; !ok {
-		return SingedAccessLog{}, ItCryptoError{Des: "Could not extract jwsSharedHeader", Err: nil}
-	}
-	jwsSharedHeader, err := JwsFromMap(header.ExtraHeaders["sharedHeader"].(map[string]interface{}))
-	if err != nil {
-		return SingedAccessLog{}, ItCryptoError{Des: "Could not parse jwsSharedHeader", Err: err}
-	}
-
 	// Parse the jwsSharedLog which is stored within the JWE plaintext
 	var obj interface{}
 	json.Unmarshal(plaintext, &obj)
@@ -42,15 +35,10 @@ func Decrypt(jwe string, receiver AuthenticatedUser, fetchUser FetchUser) (Singe
 	}
 
 	// Extract the creator specified within the SharedLog.
-	// Both, the SharedLog and the SharedHeader, are expected to be signed by this creator.
+	// The SharedLog is expected to be signed by this creator.
 	creator, err := claimedCreator(jwsSharedLog)
 	if err != nil {
 		return SingedAccessLog{}, ItCryptoError{Des: "Failed to extract creator", Err: err}
-	}
-
-	sharedHeader, err := verifySharedHeader(jwsSharedHeader, fetchUser(creator))
-	if err != nil {
-		return SingedAccessLog{}, ItCryptoError{Des: "Could not verify sharedHeader", Err: err}
 	}
 
 	sharedLog, err := verifySharedLog(jwsSharedLog, fetchUser(creator))
@@ -71,20 +59,34 @@ func Decrypt(jwe string, receiver AuthenticatedUser, fetchUser FetchUser) (Singe
 		return SingedAccessLog{}, ItCryptoError{Des: "Could not verify accessLog", Err: err}
 	}
 
-	/*
-	   Invariants, which need to hold:
-	   1. AccessLog.owner == SharedHeader.owner
-	   2. SharedLog.creator == AccessLog.monitor || SharedLog.creator == AccessLog.owner
-	   3. SharedHeader.shareId = SharedLog.shareId
-	*/
-	// Verify if shareIds are identical
-	if sharedHeader.ShareId != sharedLog.ShareId {
-		return SingedAccessLog{}, ItCryptoError{Des: "Malformed data: ShareIds do not match!"}
+	// Verify that the recipients in the SharedLog are equal to the recipients in the metadata
+	metaRecipientsRaw, ok := header.ExtraHeaders["recipients"].([]interface{})
+	if !ok {
+		return SingedAccessLog{}, ItCryptoError{Des: "Could not extract recipients from metadata", Err: nil}
 	}
 
-	// Verify if sharedHeader contains correct owner
-	if accessLog.Owner != sharedHeader.Owner {
-		return SingedAccessLog{}, ItCryptoError{Des: "Malformed data: The owner of the AccessLog is not specified as owner in the SharedHeader!"}
+	metaRecipients := make([]string, len(metaRecipientsRaw))
+	for i := range metaRecipientsRaw {
+		metaRecipients[i] = metaRecipientsRaw[i].(string)
+	}
+
+	if !reflect.DeepEqual(sharedLog.Recipients, metaRecipients) {
+		return SingedAccessLog{}, ItCryptoError{Des: "Malformed data: Sets of recipients are not equal!"}
+	}
+
+	// Verify that the decrypting user is part of the recipients
+	if !slices.Contains(sharedLog.Recipients, receiver.Id) {
+		return SingedAccessLog{}, ItCryptoError{Des: "Malformed data: Decrypting user not specified in recipients!"}
+	}
+
+	// Verify that the owner in the AccessLog is equal to the owner in the metadata
+	metaOwner, ok := header.ExtraHeaders["owner"].(string)
+	if !ok {
+		return SingedAccessLog{}, ItCryptoError{Des: "Could not extract owner from metadata", Err: nil}
+	}
+
+	if metaOwner != accessLog.Owner {
+		return SingedAccessLog{}, ItCryptoError{Des: "Malformed data: The specified owners are not equal!", Err: nil}
 	}
 
 	// Verify if either accessLog.owner or accessLog.monitor shared the log
@@ -92,7 +94,7 @@ func Decrypt(jwe string, receiver AuthenticatedUser, fetchUser FetchUser) (Singe
 		return SingedAccessLog{}, ItCryptoError{Des: "Malformed data: Only the owner or the monitor of the AccessLog are allowed to share."}
 	}
 	if sharedLog.Creator == accessLog.Monitor {
-		if len(sharedHeader.Receivers) != 1 || sharedHeader.Receivers[0] != accessLog.Owner {
+		if len(sharedLog.Recipients) != 1 || sharedLog.Recipients[0] != accessLog.Owner {
 			return SingedAccessLog{}, ItCryptoError{Des: "Malformed data: Monitors can only share the data with the owner of the log."}
 		}
 	}
@@ -123,28 +125,6 @@ func claimedMonitor(jwsAccessLog SingedAccessLog) (string, error) {
 		return "", ItCryptoError{Des: "Could not deserialize payload in jwsAccessLog", Err: err}
 	}
 	return accessLog.Monitor, nil
-}
-
-func verifySharedHeader(jwsSharedHeader JWS, sender RemoteUser) (SharedHeader, error) {
-
-	// Parse JWS into correct object
-	verify, err := jwsSharedHeader.ToJsonWebSignature()
-	if err != nil {
-		return SharedHeader{}, ItCryptoError{Des: "Could not parse JWS", Err: err}
-	}
-
-	// Verify signature of passed jwsSharedHeader
-	payload, err := verify.Verify(sender.VerificationCertificate)
-	if err != nil {
-		return SharedHeader{}, ItCryptoError{Des: "Could not verify signature of jwsSharedLog", Err: err}
-	}
-
-	// Parse payload into SharedHeader object
-	sharedHeader, err := SharedHeaderFromJson(payload)
-	if err != nil {
-		return SharedHeader{}, ItCryptoError{Des: "Could not deserialize payload in jwsSharedHeader", Err: err}
-	}
-	return sharedHeader, nil
 }
 
 func verifySharedLog(jwsSharedLog JWS, sender RemoteUser) (SharedLog, error) {

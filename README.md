@@ -1,6 +1,6 @@
 # Go-It-Crypto
 
-This go module implements E2EE encryption functionality for the inverse transparency toolchain [[1]](#1).
+This go module implements end-to-end encryption (E2EE) functionality for the inverse transparency toolchain [[1]](#1).
 It was developed in the scope of my [master thesis at TUM](https://github.com/haggj/Masterarbeit). 
 It is fully compatible with the corresponding Typescript library [ts-it-crypto](https://github.com/haggj/ts-it-crypto) and Python library [py-it-crypto](https://github.com/haggj/py-it-crypto).
 The module was published to the [go package index](https://pkg.go.dev/github.com/haggj/go-it-crypto).
@@ -60,7 +60,7 @@ CGO_ENABLED=0 GODEBUG=x509sha1=1 go test -v ./...
 
 1. Commit changes
 2. Tag new version: `git tag v1.2.3`
-3. Push version `git push origin v.1.2.3`
+3. Push version `git push origin v1.2.3`
 4. Push version to package index `GOPROXY=proxy.golang.org go list -m github.com/haggj/go-it-crypto@v1.2.3`
 
 # References

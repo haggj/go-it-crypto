@@ -5,9 +5,9 @@ import (
 )
 
 type SharedLog struct {
-	Log     SingedAccessLog `json:"log"`
-	ShareId string          `json:"shareId"`
-	Creator string          `json:"creator"`
+	Log        SingedAccessLog `json:"log"`
+	Recipients []string        `json:"recipients"`
+	Creator    string          `json:"creator"`
 }
 
 func SharedLogFromJson(data []byte) (SharedLog, error) {
