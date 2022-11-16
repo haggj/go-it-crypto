@@ -19,11 +19,11 @@ type AuthenticatedUser struct {
 	SigningKey    *ecdsa.PrivateKey
 }
 
-func (user AuthenticatedUser) Encrypt(log SingedAccessLog, receivers []RemoteUser) (string, error) {
+func (user AuthenticatedUser) EncryptLog(log SingedAccessLog, receivers []RemoteUser) (string, error) {
 	return Encrypt(log, user, receivers)
 }
 
-func (user AuthenticatedUser) Decrypt(jwe string, fn FetchUser) (SingedAccessLog, error) {
+func (user AuthenticatedUser) DecryptLog(jwe string, fn FetchUser) (SingedAccessLog, error) {
 	return Decrypt(jwe, user, fn)
 }
 
@@ -41,7 +41,7 @@ func (user AuthenticatedUser) SignData(data []byte) (string, error) {
 	return object.FullSerialize(), nil
 }
 
-func (user AuthenticatedUser) SignAccessLog(log AccessLog) (SingedAccessLog, error) {
+func (user AuthenticatedUser) SignLog(log AccessLog) (SingedAccessLog, error) {
 	rawLog, err := json.Marshal(log)
 	if err != nil {
 		return SingedAccessLog{}, err
@@ -103,6 +103,10 @@ func ImportAuthenticatedUser(id string, encryptionCertificate string, Verificati
 }
 
 func GenerateAuthenticatedUser() (AuthenticatedUser, error) {
+	return GenerateAuthenticatedUserById(uuid.New().String())
+}
+
+func GenerateAuthenticatedUserById(id string) (AuthenticatedUser, error) {
 	decryptionKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return AuthenticatedUser{}, err
@@ -117,7 +121,7 @@ func GenerateAuthenticatedUser() (AuthenticatedUser, error) {
 
 	return AuthenticatedUser{
 		RemoteUser: RemoteUser{
-			Id:                      uuid.New().String(),
+			Id:                      id,
 			EncryptionCertificate:   &encryptionCertificate,
 			VerificationCertificate: &verificationCertificate,
 		},

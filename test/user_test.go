@@ -21,13 +21,13 @@ func TestEncryptSingle(t *testing.T) {
 	accessLog.Owner = receiver.Id
 	accessLog.Monitor = sender.Id
 
-	signedLog, err := sender.SignAccessLog(accessLog)
+	signedLog, err := sender.SignLog(accessLog)
 	assert.NoError(t, err, "Failed to sign AccessLog: %s", err)
 
-	cipher, err := sender.Encrypt(signedLog, []user.RemoteUser{receiver.RemoteUser})
+	cipher, err := sender.EncryptLog(signedLog, []user.RemoteUser{receiver.RemoteUser})
 	assert.NoError(t, err, "Failed to encrypt log: %s", err)
 
-	receivedSingedLog, err := receiver.Decrypt(cipher, fetchUser)
+	receivedSingedLog, err := receiver.DecryptLog(cipher, fetchUser)
 	assert.NoError(t, err, "Failed to decrypt log: %s", err)
 
 	receivedAccessLog, err := receivedSingedLog.Extract()
@@ -56,28 +56,28 @@ func TestEncryptMultiple(t *testing.T) {
 	accessLog.Monitor = monitor.Id
 
 	// 1. Step: Monitor creates log and encrypts it for owner
-	signedLog, err := monitor.SignAccessLog(accessLog)
+	signedLog, err := monitor.SignLog(accessLog)
 	assert.NoError(t, err, "Failed to sign AccessLog: %s", err)
-	cipher, err := monitor.Encrypt(signedLog, []user.RemoteUser{owner.RemoteUser})
+	cipher, err := monitor.EncryptLog(signedLog, []user.RemoteUser{owner.RemoteUser})
 	assert.NoError(t, err, "Failed to encrypt log: %s", err)
 
 	// 2. Step: Owner can decrypt log
-	receivedSingedLog1, err := owner.Decrypt(cipher, fetchUser)
+	receivedSingedLog1, err := owner.DecryptLog(cipher, fetchUser)
 	assert.NoError(t, err, "Failed to decrypt log", err)
 	receivedAccessLog1, err := receivedSingedLog1.Extract()
 	assert.NoError(t, err, "Failed to extract AccessLog: %s", err)
 
 	// 3. Step: Owner shares with receiver
-	cipher, err = owner.Encrypt(receivedSingedLog1, []user.RemoteUser{owner.RemoteUser, receiver.RemoteUser})
+	cipher, err = owner.EncryptLog(receivedSingedLog1, []user.RemoteUser{owner.RemoteUser, receiver.RemoteUser})
 	assert.NoError(t, err, "Failed to encrypt log: %s", err)
 
 	// 4. Step: Owner and receiver can decrypt
-	receivedSingedLog2, err := owner.Decrypt(cipher, fetchUser)
+	receivedSingedLog2, err := owner.DecryptLog(cipher, fetchUser)
 	assert.NoError(t, err, "Failed to decrypt log", err)
 	receivedAccessLog2, err := receivedSingedLog2.Extract()
 	assert.NoError(t, err, "Failed to extract AccessLog: %s", err)
 
-	receivedSingedLog3, err := receiver.Decrypt(cipher, fetchUser)
+	receivedSingedLog3, err := receiver.DecryptLog(cipher, fetchUser)
 	assert.NoError(t, err, "Failed to decrypt log", err)
 	receivedAccessLog3, err := receivedSingedLog3.Extract()
 	assert.NoError(t, err, "Failed to extract AccessLog: %s", err)
@@ -87,7 +87,7 @@ func TestEncryptMultiple(t *testing.T) {
 	VerifyAccessLogs(t, receivedAccessLog2, receivedAccessLog3)
 
 	// Decrypting data at noReceiver throws error
-	_, err = noReceiver.Decrypt(cipher, fetchUser)
+	_, err = noReceiver.DecryptLog(cipher, fetchUser)
 	assert.Containsf(t, err.Error(), "Failed to decrypt JWE", "expected error containing %q, got %s", "Failed to decrypt JWE", err)
 
 }
@@ -106,13 +106,13 @@ func TestImportUser(t *testing.T) {
 	accessLog.Owner = receiver.Id
 	accessLog.Monitor = sender.Id
 
-	signedLog, err := sender.SignAccessLog(accessLog)
+	signedLog, err := sender.SignLog(accessLog)
 	assert.NoError(t, err, "Failed to sign AccessLog: %s", err)
 
-	cipher, err := sender.Encrypt(signedLog, []user.RemoteUser{receiver.RemoteUser})
+	cipher, err := sender.EncryptLog(signedLog, []user.RemoteUser{receiver.RemoteUser})
 	assert.NoError(t, err, "Failed to encrypt log: %s", err)
 
-	receivedSingedLog, err := receiver.Decrypt(cipher, fetchUser)
+	receivedSingedLog, err := receiver.DecryptLog(cipher, fetchUser)
 	assert.NoError(t, err, "Failed to decrypt log: %s", err)
 
 	receivedAccessLog, err := receivedSingedLog.Extract()
@@ -126,16 +126,16 @@ func TestImportUserSingedKeys(t *testing.T) {
 	sender, err := user.ImportAuthenticatedUser("sender", PubA, PubA, PrivA, PrivA)
 	assert.NoError(t, err, "Failed to import user: %s", err)
 
-	receiver, err := user.ImportRemoteUser("receiver", PubB, PubB, PubCa)
+	receiver, err := user.ImportRemoteUser("receiver", PubA, PubA, PubCa)
 	assert.NoError(t, err, "Failed to import user: %s", err)
 
 	accessLog := logs.GenerateAccessLog()
 	accessLog.Owner = receiver.Id
 	accessLog.Monitor = sender.Id
 
-	signedLog, _ := sender.SignAccessLog(accessLog)
+	signedLog, _ := sender.SignLog(accessLog)
 
-	_, err = sender.Encrypt(signedLog, []user.RemoteUser{receiver})
+	_, err = sender.EncryptLog(signedLog, []user.RemoteUser{receiver})
 	assert.NoError(t, err, "Failed to encrypt log: %s", err)
 }
 

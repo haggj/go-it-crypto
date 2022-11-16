@@ -22,18 +22,18 @@ func TestMissingLogin(t *testing.T) {
 	accessLog.Owner = receiver.Id
 	accessLog.Monitor = sender.Id
 
-	signedLog, err := sender.SignAccessLog(accessLog)
+	signedLog, err := sender.SignLog(accessLog)
 	assert.NoError(t, err, "Failed to sign AccessLog: %s", err)
 
 	itCrypto := itcrypto.ItCrypto{}
 
-	_, err = itCrypto.Encrypt(signedLog, []user.RemoteUser{receiver.RemoteUser})
+	_, err = itCrypto.EncryptLog(signedLog, []user.RemoteUser{receiver.RemoteUser})
 	assert.Containsf(t, err.Error(), "Before you can encrypt you need to login a user", "")
 
-	_, err = itCrypto.SignAccessLog(accessLog)
+	_, err = itCrypto.SignLog(accessLog)
 	assert.Containsf(t, err.Error(), "Before you can sign data you need to login a user", "")
 
-	_, err = itCrypto.Decrypt("signedLog")
+	_, err = itCrypto.DecryptLog("signedLog")
 	assert.Containsf(t, err.Error(), "Before you can decrypt you need to login a user", "")
 }
 
@@ -55,23 +55,23 @@ func TestValidLogin(t *testing.T) {
 	accessLog.Owner = owner.Id
 	accessLog.Monitor = monitor.Id
 
-	signedLog, err := monitor.SignAccessLog(accessLog)
+	signedLog, err := monitor.SignLog(accessLog)
 	assert.NoError(t, err, "Failed to sign AccessLog: %s", err)
 
 	// Login as owner and send log to receiver
 	itCrypto := itcrypto.ItCrypto{FetchUser: fetchUser}
 	itCrypto.Login(owner.Id, PubB, PubB, PrivB, PrivB)
-	cipher, err := itCrypto.Encrypt(signedLog, []user.RemoteUser{owner.RemoteUser, receiver.RemoteUser})
+	cipher, err := itCrypto.EncryptLog(signedLog, []user.RemoteUser{owner.RemoteUser, receiver.RemoteUser})
 	assert.NoError(t, err, "Failed to encrypt log: %s", err)
 
 	// Owner can decrypt
-	receivedSingedLog1, err := itCrypto.Decrypt(cipher)
+	receivedSingedLog1, err := itCrypto.DecryptLog(cipher)
 	assert.NoError(t, err, "Failed to encrypt log: %s", err)
 	receivedAccessLog1, err := receivedSingedLog1.Extract()
 	assert.NoError(t, err, "Failed to extract AccessLog: %s", err)
 
 	// Receiver can decrypt
-	receivedSingedLog2, err := receiver.Decrypt(cipher, fetchUser)
+	receivedSingedLog2, err := receiver.DecryptLog(cipher, fetchUser)
 	assert.NoError(t, err, "Failed to encrypt log: %s", err)
 	receivedAccessLog2, err := receivedSingedLog2.Extract()
 	assert.NoError(t, err, "Failed to extract AccessLog: %s", err)

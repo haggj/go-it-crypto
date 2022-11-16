@@ -7,8 +7,8 @@ import (
 )
 
 type ItCrypto struct {
-	FetchUser         user.FetchUser
-	AuthenticatedUser *user.AuthenticatedUser
+	FetchUser user.FetchUser
+	User      *user.AuthenticatedUser
 }
 
 func (obj *ItCrypto) Login(id string, encryptionCertificate string, verificationCertificate string, decryptionKey string, signingKey string) error {
@@ -16,30 +16,30 @@ func (obj *ItCrypto) Login(id string, encryptionCertificate string, verification
 	if err != nil {
 		return ItCryptoError{Des: "Could not improt user", Err: err}
 	}
-	obj.AuthenticatedUser = &user
+	obj.User = &user
 	return nil
 }
 
-func (obj *ItCrypto) Encrypt(log logs.SingedAccessLog, receivers []user.RemoteUser) (string, error) {
-	if obj.AuthenticatedUser == nil {
+func (obj *ItCrypto) EncryptLog(log logs.SingedAccessLog, receivers []user.RemoteUser) (string, error) {
+	if obj.User == nil {
 		return "", ItCryptoError{Des: "Before you can encrypt you need to login a user"}
 	}
-	return obj.AuthenticatedUser.Encrypt(log, receivers)
+	return obj.User.EncryptLog(log, receivers)
 }
 
-func (obj *ItCrypto) Decrypt(jwe string) (logs.SingedAccessLog, error) {
-	if obj.AuthenticatedUser == nil {
+func (obj *ItCrypto) DecryptLog(jwe string) (logs.SingedAccessLog, error) {
+	if obj.User == nil {
 		return logs.SingedAccessLog{}, ItCryptoError{Des: "Before you can decrypt you need to login a user"}
 	}
 	if obj.FetchUser == nil {
 		return logs.SingedAccessLog{}, ItCryptoError{Des: "Before you can decrypt you need to provide FetchUser function"}
 	}
-	return obj.AuthenticatedUser.Decrypt(jwe, obj.FetchUser)
+	return obj.User.DecryptLog(jwe, obj.FetchUser)
 }
 
-func (obj *ItCrypto) SignAccessLog(log logs.AccessLog) (logs.SingedAccessLog, error) {
-	if obj.AuthenticatedUser == nil {
+func (obj *ItCrypto) SignLog(log logs.AccessLog) (logs.SingedAccessLog, error) {
+	if obj.User == nil {
 		return logs.SingedAccessLog{}, ItCryptoError{Des: "Before you can sign data you need to login a user"}
 	}
-	return obj.AuthenticatedUser.SignAccessLog(log)
+	return obj.User.SignLog(log)
 }

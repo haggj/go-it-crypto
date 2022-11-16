@@ -36,7 +36,7 @@ func TestSingleReceiver(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			singedLog, err := publicReceiver.Decrypt(tt.jwe, CreateFetchUser([]user.RemoteUser{publicSender.RemoteUser}))
+			singedLog, err := publicReceiver.DecryptLog(tt.jwe, CreateFetchUser([]user.RemoteUser{publicSender.RemoteUser}))
 			if err != nil {
 				t.Errorf("Failed decryption: %s", err.Error())
 			}
@@ -62,7 +62,7 @@ func TestMultiReceiver(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			singedLog, err := publicReceiver.Decrypt(tt.jwe, CreateFetchUser([]user.RemoteUser{publicSender.RemoteUser, publicReceiver.RemoteUser}))
+			singedLog, err := publicReceiver.DecryptLog(tt.jwe, CreateFetchUser([]user.RemoteUser{publicSender.RemoteUser, publicReceiver.RemoteUser}))
 			if err != nil {
 				t.Errorf("Decryption failed: %s", err.Error())
 			}
@@ -72,7 +72,7 @@ func TestMultiReceiver(t *testing.T) {
 			}
 			assert.Equal(t, tt.want, accessLog.Justification)
 
-			singedLog, err = publicSender.Decrypt(tt.jwe, CreateFetchUser([]user.RemoteUser{publicSender.RemoteUser, publicReceiver.RemoteUser}))
+			singedLog, err = publicSender.DecryptLog(tt.jwe, CreateFetchUser([]user.RemoteUser{publicSender.RemoteUser, publicReceiver.RemoteUser}))
 			if err != nil {
 				t.Errorf("Decryption failed: %s", err.Error())
 			}
@@ -98,13 +98,13 @@ func TestCreateCompatibilityTokens(t *testing.T) {
 	accessLog.Monitor = sender.Id
 	accessLog.Justification = "go-it-crypto"
 
-	signedLog, err := sender.SignAccessLog(accessLog)
+	signedLog, err := sender.SignLog(accessLog)
 	assert.NoError(t, err, "Failed to sign AccessLog: %s", err)
 
-	goDecryptB, err := sender.Encrypt(signedLog, []user.RemoteUser{receiver.RemoteUser})
+	goDecryptB, err := sender.EncryptLog(signedLog, []user.RemoteUser{receiver.RemoteUser})
 	assert.NoError(t, err, "Failed to encrypt log: %s", err)
 
-	goDecryptAB, err := receiver.Encrypt(signedLog, []user.RemoteUser{receiver.RemoteUser, sender.RemoteUser})
+	goDecryptAB, err := receiver.EncryptLog(signedLog, []user.RemoteUser{receiver.RemoteUser, sender.RemoteUser})
 	assert.NoError(t, err, "Failed to encrypt log: %s", err)
 
 	fmt.Println(goDecryptB)
