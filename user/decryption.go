@@ -150,6 +150,9 @@ func verifySharedLog(jwsSharedLog JWS, sender RemoteUser) (SharedLog, error) {
 }
 
 func verifyAccessLog(jwsAccessLog JWS, sender RemoteUser) (AccessLog, error) {
+	if !sender.IsMonitor {
+		return AccessLog{}, ItCryptoError{Des: "Claimed monitor is not authorized to sign logs.", Err: nil}
+	}
 
 	// Parse JWS into correct object
 	verify, err := jwsAccessLog.ToJsonWebSignature()

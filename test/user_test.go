@@ -10,6 +10,7 @@ import (
 // Generate users and encrypt/decrypt data for single receiver
 func TestEncryptSingle(t *testing.T) {
 	sender, err := user.GenerateAuthenticatedUser()
+	sender.IsMonitor = true
 	assert.NoError(t, err, "Failed to generate user: %s", err)
 
 	receiver, err := user.GenerateAuthenticatedUser()
@@ -41,6 +42,7 @@ func TestEncryptMultiple(t *testing.T) {
 
 	// Setup Users
 	monitor, err := user.GenerateAuthenticatedUser()
+	monitor.IsMonitor = true
 	assert.NoError(t, err, "Failed to generate user: %s", err)
 	owner, err := user.GenerateAuthenticatedUser()
 	assert.NoError(t, err, "Failed to generate user: %s", err)
@@ -95,6 +97,7 @@ func TestEncryptMultiple(t *testing.T) {
 // Import users based on X509 certificates and PCKS8 private keys
 func TestImportUser(t *testing.T) {
 	sender, err := user.ImportAuthenticatedUser("sender", PubA, PubA, PrivA, PrivA)
+	sender.IsMonitor = true
 	assert.NoError(t, err, "Failed to import user: %s", err)
 
 	receiver, err := user.ImportAuthenticatedUser("receiver", PubB, PubB, PrivB, PrivB)
@@ -126,7 +129,7 @@ func TestImportUserSingedKeys(t *testing.T) {
 	sender, err := user.ImportAuthenticatedUser("sender", PubA, PubA, PrivA, PrivA)
 	assert.NoError(t, err, "Failed to import user: %s", err)
 
-	receiver, err := user.ImportRemoteUser("receiver", PubA, PubA, PubCa)
+	receiver, err := user.ImportRemoteUser("receiver", PubA, PubA, false, PubCa)
 	assert.NoError(t, err, "Failed to import user: %s", err)
 
 	accessLog := logs.GenerateAccessLog()
@@ -141,6 +144,6 @@ func TestImportUserSingedKeys(t *testing.T) {
 
 // Import users with CA signed keys fails
 func TestImportUserSingedKeysFail(t *testing.T) {
-	_, err := user.ImportRemoteUser("receiver", PubB, PubB, PubA)
+	_, err := user.ImportRemoteUser("receiver", PubB, PubB, false, PubA)
 	assert.Containsf(t, err.Error(), "Can not verify encryption certificate", "")
 }

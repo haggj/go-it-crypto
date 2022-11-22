@@ -40,10 +40,10 @@ func fetchUser(id string) user.RemoteUser {
 	*/
 
 	if id == "monitor" {
-		user, err := user.ImportRemoteUser("monitor", PubA, PubA, PubCa)
+		monitor, err := user.ImportRemoteUser("monitor", PubA, PubA, true, PubCa)
 
 		if err == nil {
-			return user
+			return monitor
 		}
 		panic("Can not import user: " + err.Error())
 	}

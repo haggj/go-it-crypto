@@ -40,6 +40,7 @@ func TestMissingLogin(t *testing.T) {
 // User is logged in and can encrypt, decrypt and sign data
 func TestValidLogin(t *testing.T) {
 	monitor, err := user.ImportAuthenticatedUser("monitor", PubA, PubA, PrivA, PrivA)
+	monitor.IsMonitor = true
 	assert.NoError(t, err, "Failed to import user: %s", err)
 
 	owner, err := user.ImportAuthenticatedUser("owner", PubB, PubB, PrivB, PrivB)

@@ -95,6 +95,7 @@ func ImportAuthenticatedUser(id string, encryptionCertificate string, Verificati
 			Id:                      id,
 			EncryptionCertificate:   encCert.PublicKey.(*ecdsa.PublicKey),
 			VerificationCertificate: vrfCert.PublicKey.(*ecdsa.PublicKey),
+			IsMonitor:               false,
 		},
 		DecryptionKey: decKey.(*ecdsa.PrivateKey),
 		SigningKey:    signKey.(*ecdsa.PrivateKey),

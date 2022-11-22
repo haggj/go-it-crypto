@@ -66,7 +66,7 @@ func fetchUser(id string) user.RemoteUser {
 	*/
 
 	if id == "monitor" {
-		user, err := user.ImportRemoteUser("monitor", PubA, PubA, PubCa)
+		user, err := user.ImportRemoteUser("monitor", PubA, PubA, true, PubCa)
 
 		if err == nil {
 			return user

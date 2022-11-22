@@ -16,9 +16,10 @@ type RemoteUser struct {
 	Id                      string
 	EncryptionCertificate   *ecdsa.PublicKey
 	VerificationCertificate *ecdsa.PublicKey
+	IsMonitor               bool
 }
 
-func ImportRemoteUser(id string, encryptionCertificate string, VerificationCertificate string, trustedCertificate string) (RemoteUser, error) {
+func ImportRemoteUser(id string, encryptionCertificate string, VerificationCertificate string, isMonitor bool, trustedCertificate string) (RemoteUser, error) {
 
 	rawTrustedCert, _ := pem.Decode([]byte(trustedCertificate))
 	trustedCert, err := x509.ParseCertificate([]byte(rawTrustedCert.Bytes))
@@ -47,7 +48,6 @@ func ImportRemoteUser(id string, encryptionCertificate string, VerificationCerti
 	err = encCert.CheckSignatureFrom(trustedCert)
 	if err != nil {
 		fmt.Println(err.Error())
-		panic("abc")
 		return RemoteUser{}, ItCryptoError{Des: "Can not verify verification certificate", Err: err}
 	}
 
@@ -55,6 +55,7 @@ func ImportRemoteUser(id string, encryptionCertificate string, VerificationCerti
 		Id:                      id,
 		EncryptionCertificate:   encCert.PublicKey.(*ecdsa.PublicKey),
 		VerificationCertificate: vrfCert.PublicKey.(*ecdsa.PublicKey),
+		IsMonitor:               isMonitor,
 	}, nil
 }
 
