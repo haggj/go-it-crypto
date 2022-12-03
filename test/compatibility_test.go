@@ -29,7 +29,7 @@ func _publicSender() user.AuthenticatedUser {
 var publicSender = _publicSender()
 var publicReceiver, _ = user.ImportAuthenticatedUser("receiver", PubB, PubB, PrivB, PrivB)
 
-func TestSingleReceiver(t *testing.T) {
+func TestCompatibilitySingleReceiver(t *testing.T) {
 	var tests = []struct {
 		name string
 		jwe  string
@@ -55,7 +55,7 @@ func TestSingleReceiver(t *testing.T) {
 	}
 }
 
-func TestMultiReceiver(t *testing.T) {
+func TestCompatibilityMultiReceiver(t *testing.T) {
 	var tests = []struct {
 		name string
 		jwe  string
