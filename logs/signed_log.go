@@ -9,8 +9,10 @@ import (
 	. "github.com/haggj/go-it-crypto/error"
 )
 
-type SingedAccessLog JWS
+// SingedLog is a JWS token
+type SingedLog JWS
 
+// JWS represents a basic JSON Web Signature token.
 type JWS struct {
 	Payload   string `json:"payload"`
 	Signature string `json:"signature"`
@@ -20,17 +22,10 @@ type JWS struct {
 
 func JwsFromBytes(data []byte) (JWS, error) {
 	var obj JWS
-	json.Unmarshal(data, &obj)
-	return obj, nil
-}
-
-func JwsFromMap(data map[string]interface{}) (JWS, error) {
-	rawJson, err := json.Marshal(data)
+	err := json.Unmarshal(data, &obj)
 	if err != nil {
-		return JWS{}, ItCryptoError{Des: "Failed to serialize provided map", Err: err}
+		return JWS{}, ItCryptoError{Des: "Failed to deserialized provided data", Err: err}
 	}
-	var obj JWS
-	json.Unmarshal(rawJson, &obj)
 	return obj, nil
 }
 
@@ -46,7 +41,7 @@ func (jws JWS) ToJsonWebSignature() (jose.JSONWebSignature, error) {
 	return *sig, nil
 }
 
-func (jwsAccessLog SingedAccessLog) Extract() (AccessLog, error) {
+func (jwsAccessLog SingedLog) Extract() (AccessLog, error) {
 	rawJson, err := base64.RawURLEncoding.DecodeString(jwsAccessLog.Payload)
 	if err != nil {
 		return AccessLog{}, ItCryptoError{Des: "Could not base64 decode payload in jwsAccessLog", Err: err}

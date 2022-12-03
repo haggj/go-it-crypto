@@ -7,7 +7,11 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
-func Encrypt(jwsSignedLog SingedAccessLog, sender AuthenticatedUser, receivers []RemoteUser) (string, error) {
+// Encrypt encrypts a given SingedLog for the specified set of receivers in the name of the passed sender.
+// This function might be used either by a monitor (which initially encrypts the log for the owner)
+// or by the owner (which wants to share the AccessLog with others).
+// The provided SingedLog is assumed to be signed by a monitor.
+func Encrypt(jwsSignedLog SingedLog, sender AuthenticatedUser, receivers []RemoteUser) (string, error) {
 	var receiverIds []string
 	for _, receiver := range receivers {
 		receiverIds = append(receiverIds, receiver.Id)
@@ -27,7 +31,7 @@ func Encrypt(jwsSignedLog SingedAccessLog, sender AuthenticatedUser, receivers [
 	}
 
 	// Sender creates the encrypted JWE
-	accessLog, err := FromSingedAccessLog(jwsSignedLog)
+	accessLog, err := FromSingedLog(jwsSignedLog)
 	if err != nil {
 		return "", ItCryptoError{Des: "Could not read provided accessLog.", Err: err}
 	}

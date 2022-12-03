@@ -12,6 +12,13 @@ import (
 	. "github.com/haggj/go-it-crypto/error"
 )
 
+// RemoteUser represents a remote User, which has access to the certificates of the user.
+// The certificates can be used to:
+// - encrypt data for this user (encryptionCertificate)
+// - verify data which was signed by this user (verificationCertificate)
+//
+// **NOTE**: Do not instantiate this interface by yourself since the provided  certificate need to be validated against a trusted CA.
+// Use the *User.importRemoteUser()* function instead.
 type RemoteUser struct {
 	Id                      string
 	EncryptionCertificate   *ecdsa.PublicKey
@@ -19,6 +26,8 @@ type RemoteUser struct {
 	IsMonitor               bool
 }
 
+// ImportRemoteUser imports a user based on its public certificates. This function also verifies if the provided
+// certificates are singed by the trusted certificate authority.
 func ImportRemoteUser(id string, encryptionCertificate string, VerificationCertificate string, isMonitor bool, trustedCertificate string) (RemoteUser, error) {
 
 	rawTrustedCert, _ := pem.Decode([]byte(trustedCertificate))
@@ -59,6 +68,7 @@ func ImportRemoteUser(id string, encryptionCertificate string, VerificationCerti
 	}, nil
 }
 
+// GenerateRemoteUser generates a random RemoteUser. It is used during testing.
 func GenerateRemoteUser() (RemoteUser, error) {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
