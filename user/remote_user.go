@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 
 	"github.com/google/uuid"
 	. "github.com/haggj/go-it-crypto/error"
@@ -56,7 +55,6 @@ func ImportRemoteUser(id string, encryptionCertificate string, VerificationCerti
 	// Verify verification certificate
 	err = encCert.CheckSignatureFrom(trustedCert)
 	if err != nil {
-		fmt.Println(err.Error())
 		return RemoteUser{}, ItCryptoError{Des: "Can not verify verification certificate", Err: err}
 	}
 
