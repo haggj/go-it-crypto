@@ -129,7 +129,7 @@ func main() {
 ## Running tests
 
 ```bash
-CGO_ENABLED=0  go test -v ./...
+CGO_ENABLED=0  go test -v ./test
 ```
 
 ## Update go package
